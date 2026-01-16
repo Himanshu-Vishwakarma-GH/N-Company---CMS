@@ -24,6 +24,7 @@ from app.models.venture import Venture
 from app.models.task import Task
 from app.models.announcement import Announcement, AnnouncementAck
 from app.models.leave import Leave, Holiday
+from app.models.time_log import TimeLog
 from app.core.config import settings
 
 target_metadata = Base.metadata

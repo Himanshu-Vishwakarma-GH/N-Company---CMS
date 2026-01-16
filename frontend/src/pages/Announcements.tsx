@@ -94,20 +94,47 @@ const Announcements = () => {
             )}
 
             <div className="grid gap-4">
-                {announcements.map((ann: any) => (
-                    <div key={ann.id} className="rounded-lg border bg-white p-6 shadow-sm">
-                        <h3 className="text-lg font-semibold">{ann.title}</h3>
-                        <p className="mt-2 text-gray-600">{ann.content}</p>
-                        <div className="mt-4 flex items-center justify-between">
-                            <span className="text-xs text-gray-400">
-                                {new Date(ann.created_at).toLocaleDateString()}
-                            </span>
-                            <Button variant="outline" size="sm" onClick={() => acknowledge(ann.id)}>
-                                Acknowledge
-                            </Button>
+                {announcements.map((ann: any) => {
+                    const hasAcknowledged = ann.acks?.some((ack: any) => ack.user_id === user?.id);
+                    const ackCount = ann.acks?.length || 0;
+
+                    return (
+                        <div key={ann.id} className="rounded-lg border bg-white p-6 shadow-sm">
+                            <h3 className="text-lg font-semibold">{ann.title}</h3>
+                            <p className="mt-2 text-gray-600">{ann.content}</p>
+
+                            {/* Manager View: Read Receipts */}
+                            {isManager && ann.acks && ann.acks.length > 0 && (
+                                <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-500">
+                                    <p className="font-semibold mb-1 text-xs uppercase tracking-wide">Seen by ({ackCount}):</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {ann.acks.map((ack: any) => (
+                                            <span key={ack.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                                {ack.user?.full_name || `User ${ack.user_id}`}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-4 flex items-center justify-between">
+                                <span className="text-xs text-gray-400">
+                                    {new Date(ann.created_at).toLocaleDateString()}
+                                </span>
+
+                                <Button
+                                    variant={hasAcknowledged ? "secondary" : "primary"}
+                                    size="sm"
+                                    onClick={() => !hasAcknowledged && acknowledge(ann.id)}
+                                    disabled={hasAcknowledged} // Disable if already acked
+                                    className={hasAcknowledged ? "opacity-70 cursor-not-allowed" : ""}
+                                >
+                                    {hasAcknowledged ? "Acknowledged" : "Acknowledge"}
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 {announcements.length === 0 && <p className="text-gray-500">No announcements.</p>}
             </div>
         </div>

@@ -5,8 +5,10 @@ from sqlalchemy import select
 
 from app.api.v1 import deps
 from app.database import get_db
+from datetime import datetime
 from app.models.task import Task, TaskStatus
 from app.models.user import User, UserRole
+from app.models.time_log import TimeLog
 from app.schemas import task as task_schema
 
 router = APIRouter()
@@ -112,6 +114,75 @@ async def update_task(
         setattr(task, field, value)
         
     db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+@router.post("/{id}/timer/start", response_model=task_schema.Task)
+async def start_timer(
+    *,
+    db: AsyncSession = Depends(get_db),
+    id: int,
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Start timer for a task.
+    """
+    result = await db.execute(select(Task).where(Task.id == id))
+    task = result.scalars().first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if current_user.role == UserRole.EMPLOYEE and task.assigned_to_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not permitted to track time for this task")
+
+    if task.active_timer_start:
+        raise HTTPException(status_code=400, detail="Timer is already running")
+
+    task.active_timer_start = datetime.utcnow()
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+@router.post("/{id}/timer/stop", response_model=task_schema.Task)
+async def stop_timer(
+    *,
+    db: AsyncSession = Depends(get_db),
+    id: int,
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Stop timer and log time.
+    """
+    result = await db.execute(select(Task).where(Task.id == id))
+    task = result.scalars().first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if not task.active_timer_start:
+        raise HTTPException(status_code=400, detail="Timer is not running")
+
+    end_time = datetime.utcnow()
+    start_time = task.active_timer_start
+    
+    # Calculate duration
+    duration = end_time - start_time
+    minutes = int(duration.total_seconds() / 60)
+    
+    # Create TimeLog
+    time_log = TimeLog(
+        task_id=task.id,
+        user_id=current_user.id,
+        start_time=start_time,
+        end_time=end_time,
+        duration_minutes=minutes
+    )
+    db.add(time_log)
+    
+    task.active_timer_start = None
+    db.add(task)
+    
     await db.commit()
     await db.refresh(task)
     return task

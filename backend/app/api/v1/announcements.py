@@ -11,6 +11,8 @@ from app.schemas import announcement as announcement_schema
 
 router = APIRouter()
 
+from sqlalchemy.orm import selectinload
+
 @router.get("/", response_model=List[announcement_schema.Announcement])
 async def read_announcements(
     db: AsyncSession = Depends(get_db),
@@ -19,9 +21,15 @@ async def read_announcements(
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
     """
-    Retrieve announcements.
+    Retrieve announcements with acknowledgements.
     """
-    result = await db.execute(select(Announcement).filter(Announcement.is_active == True).offset(skip).limit(limit))
+    # Eager load acks and the nested user within acks
+    query = select(Announcement)\
+        .options(selectinload(Announcement.acks).selectinload(AnnouncementAck.user))\
+        .filter(Announcement.is_active == True)\
+        .offset(skip).limit(limit)
+    
+    result = await db.execute(query)
     return result.scalars().all()
 
 @router.post("/", response_model=announcement_schema.Announcement)
@@ -34,11 +42,25 @@ async def create_announcement(
     """
     Create announcement.
     """
-    announcement = Announcement(**announcement_in.model_dump())
-    db.add(announcement)
-    await db.commit()
-    await db.refresh(announcement)
-    return announcement
+    try:
+        announcement = Announcement(**announcement_in.model_dump())
+        db.add(announcement)
+        await db.commit()
+        await db.refresh(announcement)
+        
+        # Manually construct Pydantic model to avoid Greenlet/LazyLoad error
+        return announcement_schema.Announcement(
+            id=announcement.id,
+            title=announcement.title,
+            content=announcement.content,
+            is_active=announcement.is_active,
+            created_at=announcement.created_at,
+            acks=[] 
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{id}/acknowledge", response_model=announcement_schema.AnnouncementAck)
 async def acknowledge_announcement(

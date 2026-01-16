@@ -21,7 +21,8 @@ class User(Base):
     venture_id = Column(Integer, ForeignKey("ventures.id"), nullable=True) # Nullable for Super Admins
     
     venture = relationship("Venture", back_populates="employees")
-    tasks_assigned = relationship("Task", foreign_keys="[Task.assigned_to_id]", back_populates="assignee", lazy="selectin")
+    assigned_tasks = relationship("Task", back_populates="assignee", foreign_keys="[Task.assigned_to_id]")
+    time_logs = relationship("TimeLog", back_populates="user")
     tasks_created = relationship("Task", foreign_keys="[Task.created_by_id]", back_populates="creator", lazy="selectin")
     announcement_acks = relationship("AnnouncementAck", back_populates="user")
     # leaves = relationship("Leave", back_populates="user")

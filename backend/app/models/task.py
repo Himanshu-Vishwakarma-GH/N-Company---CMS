@@ -33,5 +33,8 @@ class Task(Base):
     assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Can be null if assigned to a role (future scope)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    assignee = relationship("User", foreign_keys=[assigned_to_id], back_populates="tasks_assigned", lazy="selectin")
+    assignee = relationship("User", back_populates="assigned_tasks", foreign_keys=[assigned_to_id], lazy="selectin")
+    time_logs = relationship("TimeLog", back_populates="task", cascade="all, delete-orphan", lazy="selectin")
+
+    active_timer_start = Column(DateTime, nullable=True) # If set, timer is running
     creator = relationship("User", foreign_keys=[created_by_id], back_populates="tasks_created", lazy="selectin")

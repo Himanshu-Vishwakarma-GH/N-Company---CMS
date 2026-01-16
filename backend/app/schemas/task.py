@@ -32,5 +32,11 @@ class TaskAssignee(BaseModel):
     full_name: str
     model_config = ConfigDict(from_attributes=True)
 
+from app.schemas.time_log import TimeLog
+
+# ...
+
 class Task(TaskInDBBase):
     assignee: Optional[TaskAssignee] = None
+    time_logs: List[TimeLog] = []
+    active_timer_start: Optional[datetime] = None

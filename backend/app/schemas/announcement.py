@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
+from app.schemas.user import UserBase # Create dependency
 
 class AnnouncementBase(BaseModel):
     title: Optional[str] = None
@@ -19,9 +20,6 @@ class AnnouncementInDBBase(AnnouncementBase):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
-class Announcement(AnnouncementInDBBase):
-    pass
-
 class AnnouncementAckBase(BaseModel):
     announcement_id: int
 
@@ -32,4 +30,9 @@ class AnnouncementAck(AnnouncementAckBase):
     id: int
     user_id: int
     acknowledged_at: datetime
+    # Nested User for display
+    user: Optional['UserBase'] = None 
     model_config = ConfigDict(from_attributes=True)
+
+class Announcement(AnnouncementInDBBase):
+    acks: List[AnnouncementAck] = []
